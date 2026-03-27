@@ -54,7 +54,7 @@ Note: Alwayls open RStudio via the `.Rproj` file, NOT by double-clicking `.R` fi
 ### Step 3: Install required packages
 Run this ONCE in the RStudio Console:
 ```bash
-install.packages(c("tidyverse", "corrplot", "car", "lmtest", "sandwich", "stargazer"))
+install.packages(c("tidyverse", "haven", "corrplot", "car", "lmtest", "sandwich", "stargazer"))
 ```
 
 ### How to Load Data
