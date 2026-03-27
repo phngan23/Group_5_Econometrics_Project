@@ -1,7 +1,7 @@
 # Group_5_Econometrics_Project
 # **Determinants of Wages in the Manufacturing Sector in the Red River Delta: Evidence from the Labor Force Survey 2018**
 
-### Group Members
+## Group Members
 | Name | Student ID | Role & Responsibilities | Contribution |
 |------|------------|-------------------------|--------------|
 | **Nguyen Phuong Ngan** | 11245914 | **Team Leader:**  |  |
@@ -9,7 +9,7 @@
 | **Vu Tran Cat Linh** | 11245899 |  |  |
 | **Phung Nhat Minh** | 11245910 |  |  |
 
-### Project Structure
+## Project Structure
 ```text
 Group_5_Econometrics_Project/
 ├── data/
@@ -40,24 +40,24 @@ Group_5_Econometrics_Project/
 │
 └── REAME.md
 ```
-### Setup project
-##### Step 1: Clone the repository
+## Setup project
+### Step 1: Clone the repository
 ```bash
 git clone https://github.com/phngan23 Group_5_Econometrics_Project
 ```
 
-##### Step 2: Open as R Project
+### Step 2: Open as R Project
 In RStudio: File → Open Project → browse to Group_5_Econometrics_Project.Rproj
 
 Note: Alwayls open RStudio via the `.Rproj` file, NOT by double-clicking `.R` files directly. This ensures all file paths like `data/raw/data.csv` work correctly.
 
-##### Step 3: Install required packages
+### Step 3: Install required packages
 Run this ONCE in the RStudio Console:
 ```bash
 install.packages(c("tidyverse", "corrplot", "car", "lmtest", "sandwich", "stargazer"))
 ```
 
-##### How to Load Data
+### How to Load Data
 Variables created in one R sesssion do NOT carry over to the next sesson or a new script. Always start each script by loading the `.RData` file - this instantly restores all variables.
 
 Template copy this to the top of every new script:
@@ -76,7 +76,7 @@ nrow(sub1_female)   # should be 9,426
 nrow(sub2_male)     # should be 7,044
 ```
 
-### Variable Reference
+## Variable Reference
 | Variable | Type | Source | Description |
 |----------|------|--------|-------------|
 | `ln(wage)` | Continuour | C44A  | Log of monthly wage — dependent variable |
@@ -98,7 +98,7 @@ Base group for dummy variables:
 - **Gender**: female workers (`male=0`)
 - **Contract**: all non-permanent contracts (`contract=0`)
 
-### Git Workflow - Daily Routine
+## Git Workflow - Daily Routine
 ```bash
 # BEFORE starting work — always pull first
 git pull
