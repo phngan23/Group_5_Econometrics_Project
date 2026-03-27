@@ -1,0 +1,33 @@
+# ==============================================
+# .gitignore for Group 5 Econometrics Project
+# ==============================================
+
+# ── FILE R TẠM ──
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj.user/
+
+# ── FILE RDATA PROCESSED (tùy chọn) ──
+# Nếu file .RData nhỏ (<100MB) thì có thể up lên GitHub
+# Nếu muốn bỏ thì bỏ comment dòng dưới
+# data/processed/
+
+# ── FILE HỆ THỐNG ──
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Mac
+.DS_Store
+.AppleDouble
+
+# ── FILE OUTPUT TẠM ──
+*.log
+*.aux
+*.out
+
+# ── FILE WORD/PDF TẠM KHI KNIT ──
+report/*.log
+report/report_cache/
+report/report_files/
