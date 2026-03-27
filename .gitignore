@@ -31,3 +31,4 @@ Desktop.ini
 report/*.log
 report/report_cache/
 report/report_files/
+.Rproj.user
