@@ -23,9 +23,9 @@ Group_5_Econometrics_Project/
 │
 ├── scripts/
 │   ├── 01_variable_coding.R       # Read data, create & encode all variables
-│   ├── 02_descriptive_stats.R                   # Table 1 & 2: descriptive statistics
-│   ├── 03_distribution.R                # Histogram, QQ-plot, outlier detection
-│   └── 04_correlation_vif.R           # Correlation matric, VIF check
+│   ├── 02_descriptive_stats.R     # Table 1 & 2: descriptive statistics
+│   ├── 03_distribution.R          # Histogram, QQ-plot, outlier detection
+│   └── 04_correlation_vif.R       # Correlation matric, VIF check
 │
 ├── figures/                       # All plots saved here (.png)
 │   ├── histogram_wage.png
