@@ -1,6 +1,7 @@
 # Group_5_Econometrics_Project
 
 ### Project Structure
+```text
 Group_5_Econometrics_Project/
 ├── data/
 │   ├── raw/
@@ -27,3 +28,4 @@ Group_5_Econometrics_Project/
 ├── Report.Rmd
 │
 └── REAME.md
+```
