@@ -8,7 +8,7 @@
 #========================================
 
 # install packages and library
-install.packages("tidyverse")
+#install.packages("tidyverse")
 install.packages("haven") # read file .csv
 
 library(tidyverse)
