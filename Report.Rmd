@@ -1,6 +1,5 @@
 ---
-title: "'Report: Determinants of Wages in the Manufacturing Sector in the Southeast"
-  Region of Vietnam: Evidence from the Labor Force Survey 2018'
+title: "'Determinants of Wages in the Manufacturing Sector in the Red River Delta: Evidence from the Labor Force Survey 2018'
 author: "Group 5"
 date: "2026-03-27"
 output: pdf_document
