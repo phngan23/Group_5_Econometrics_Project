@@ -1,13 +1,11 @@
 # ================================================
-# 02_descriptive_stats.R
+# 02a_descriptive_stats.R
 # Purpose: Descriptive statistics — Table 1 & Table 2
 # Input:   data/processed/data_model.RData
 # Output:  tables/table1a_continuous.csv
 #          tables/table1b_dummy.csv
 #          tables/table2a_continuous_by_gender.csv
 #          tables/table2b_dummy_by_gender.csv
-# Author:  [Member name]
-# Date:    April 2026
 # ================================================
 
 library(tidyverse)
