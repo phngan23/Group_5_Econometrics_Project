@@ -1,5 +1,5 @@
 #========================================
-# 04_correlation_vif.R
+# 02c_correlation_vif.R
 # Purpose: Correlation matrix heatmap + VIF check
 # Input: data/processed/data_model.RData
 #========================================

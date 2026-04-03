@@ -1,5 +1,5 @@
 #========================================
-# 03_distribution.R
+# 02b_distribution.R
 # Purpose: Check distribution of ln(wage) and detect outliers
 # Input: data/processed/data_model.RData
 # Output: figures/histogram_wage.png
