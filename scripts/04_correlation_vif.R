@@ -5,6 +5,7 @@
 #========================================
 
 # Install:
+
 install.packages("car")
 install.packages("corrplot")
 
@@ -15,9 +16,6 @@ library(corrplot)   # for correlation heatmap
 
 # Load data
 load("data/processed/data_model.RData")
-load("C:/Users/HP/Downloads/Group_5_Econometrics_Project-main/data/processed/data_model.RData")
-# dẫn trực tiếp nếu không chạy dc ở trên
-
 
 #========================================
 # STEP 1: Select model variables
@@ -72,6 +70,10 @@ var_labels <- c("ln(wage)", "educ", "age", "age²", "hours",
 colnames(cor_matrix) <- var_labels
 rownames(cor_matrix) <- var_labels
 
+# Save correlation heatmap to figures/
+png("figures/correlation_heatmap.png",
+    width = 2400, height = 2000, res = 300)
+
 # Plot heatmap
 corrplot(
   cor_matrix,
@@ -87,6 +89,8 @@ corrplot(
   mar       = c(0, 0, 2, 0)
 )
 
+dev.off()   # close the PNG device — must have this line!
+cat("✓ Saved: figures/correlation_heatmap.png\n")
 
 #========================================
 # STEP 4: VIF Check — Full Sample
@@ -116,7 +120,6 @@ print(vif_df, row.names = FALSE)
 cat("\nNote: High VIF for age and age² is EXPECTED and ACCEPTABLE\n")
 cat("      because age² is derived from age (quadratic term).\n")
 cat("      This does NOT indicate a real multicollinearity problem.\n")
-
 
 #========================================
 # STEP 5: VIF Check — Subsample Female
@@ -173,6 +176,22 @@ vif_df_m <- data.frame(
 
 print(vif_df_m, row.names = FALSE)
 
+# Save VIF results to tables/
+write.csv(vif_df,
+          "tables/vif_full_sample.csv",
+          row.names = FALSE)
+
+write.csv(vif_df_f,
+          "tables/vif_female.csv",
+          row.names = FALSE)
+
+write.csv(vif_df_m,
+          "tables/vif_male.csv",
+          row.names = FALSE)
+
+cat("✓ Saved: tables/vif_full_sample.csv\n")
+cat("✓ Saved: tables/vif_female.csv\n")
+cat("✓ Saved: tables/vif_male.csv\n")
 
 #========================================
 # STEP 7: Summary Note
