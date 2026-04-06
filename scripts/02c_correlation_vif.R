@@ -2,6 +2,10 @@
 # 02c_correlation_vif.R
 # Purpose: Correlation matrix heatmap + VIF check
 # Input: data/processed/data_model.RData
+# Output: figures/correlation_heatmap.png
+#         tables/vif_full_sample.csv
+#         tables/vif_female.csv
+#         tables/vif_male.csv
 #========================================
 
 # Install:
@@ -85,7 +89,7 @@ corrplot(
   addCoef.col = "black",
   number.cex  = 0.65,
   col       = colorRampPalette(c("#2166AC", "white", "#D6604D"))(200),
-  title     = "Correlation Matrix — Manufacturing Sector, Red River Delta",
+  title     = "Correlation Matrix - Manufacturing Sector, Red River Delta",
   mar       = c(0, 0, 2, 0)
 )
 
@@ -192,6 +196,7 @@ write.csv(vif_df_m,
 cat("✓ Saved: tables/vif_full_sample.csv\n")
 cat("✓ Saved: tables/vif_female.csv\n")
 cat("✓ Saved: tables/vif_male.csv\n")
+
 
 #========================================
 # STEP 7: Summary Note
