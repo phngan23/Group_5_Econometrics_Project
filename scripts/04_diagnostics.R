@@ -192,30 +192,43 @@ par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
 # Plot 1: Residuals vs Fitted
 #         — checks linearity and homoskedasticity
 #         — want: random scatter around horizontal line at 0
+# plot(model_full, which = 1, main = "Residuals vs Fitted", col  = "steelblue", pch = 16, cex = 0.3)
 plot(model_full, which = 1,
-     main = "Residuals vs Fitted",
+     id.n = 0,                      
+     caption = "", sub.caption = "",
      col  = "steelblue", pch = 16, cex = 0.3)
+title("Residuals vs Fitted", line = 1)
 
 # Plot 2: Normal Q-Q plot of residuals
 #         — checks normality of residuals
 #         — want: points close to diagonal line
+# plot(model_full, which = 2, main = "Normal Q-Q Plot", col  = "steelblue", pch = 16, cex = 0.3)
 plot(model_full, which = 2,
-     main = "Normal Q-Q Plot",
+     id.n = 0,
+     caption = "", sub.caption = "",
      col  = "steelblue", pch = 16, cex = 0.3)
+title("Normal Q-Q Plot", line = 1)
 
 # Plot 3: Scale-Location plot
 #         — another check for heteroskedasticity
 #         — want: horizontal red line with random scatter
+# plot(model_full, which = 3,main = "Scale-Location",col  = "steelblue", pch = 16, cex = 0.3)
 plot(model_full, which = 3,
-     main = "Scale-Location",
+     id.n = 0,
+     caption = "", sub.caption = "",
      col  = "steelblue", pch = 16, cex = 0.3)
+title("Scale-Location", line = 1)
+#title(ylab = expression(sqrt("|Standardized residuals|")))
 
 # Plot 4: Residuals vs Leverage
 #         — identifies influential observations (Cook's distance)
 #         — want: no points beyond Cook's distance lines
+# plot(model_full, which = 5,main = "Residuals vs Leverage", col  = "steelblue", pch = 16, cex = 0.3)
 plot(model_full, which = 5,
-     main = "Residuals vs Leverage",
+     id.n = 3,
+     caption = "", sub.caption = "",
      col  = "steelblue", pch = 16, cex = 0.3)
+title("Residuals vs Leverage", line = 1)
 
 dev.off()  # close PNG — MUST include this line
 cat("\n✓ Saved: figures/residual_plots.png\n")
