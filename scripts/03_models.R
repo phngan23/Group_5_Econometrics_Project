@@ -57,7 +57,7 @@ cat("\n✓ All 3 OLS models estimated\n")
 
 
 # ════════════════════════════════════════════════
-# STEP 2: APPLY ROBUST STANDARD ERRORS (HC1)
+# STEP 2: APPLY ROBUST STANDARD ERRORS (HC3)
 # ════════════════════════════════════════════════
 
 # HC3 robust SE corrects for heteroskedasticity
