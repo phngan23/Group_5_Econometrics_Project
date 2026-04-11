@@ -60,15 +60,15 @@ cat("\n✓ All 3 OLS models estimated\n")
 # STEP 2: APPLY ROBUST STANDARD ERRORS (HC1)
 # ════════════════════════════════════════════════
 
-# HC1 robust SE corrects for heteroskedasticity
+# HC3 robust SE corrects for heteroskedasticity
 # Required because Breusch-Pagan test (in 04_diagnostics.R)
 # will confirm presence of heteroskedasticity
 
-robust_full   <- coeftest(model_full,   vcov = vcovHC(model_full,   type = "HC1"))
-robust_female <- coeftest(model_female, vcov = vcovHC(model_female, type = "HC1"))
-robust_male   <- coeftest(model_male,   vcov = vcovHC(model_male,   type = "HC1"))
+robust_full   <- coeftest(model_full,   vcov = vcovHC(model_full,   type = "HC3"))
+robust_female <- coeftest(model_female, vcov = vcovHC(model_female, type = "HC3"))
+robust_male   <- coeftest(model_male,   vcov = vcovHC(model_male,   type = "HC3"))
 
-cat("✓ Robust SE (HC1) applied to all models\n")
+cat("✓ Robust SE (HC3) applied to all models\n")
 
 
 # ════════════════════════════════════════════════
@@ -228,7 +228,6 @@ compute_marginal(model_male,   "Male Subsample")
 # ════════════════════════════════════════════════
 
 # Save all 6 model objects in one file
-# model_full.RData is no longer needed — everything is here
 save(model_full,   model_female,   model_male,
      robust_full,  robust_female,  robust_male,
      file = "data/processed/model_results.RData")

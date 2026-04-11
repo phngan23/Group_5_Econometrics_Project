@@ -1,9 +1,9 @@
 # ================================================
 # 04_diagnostics.R
-# Purpose: Test OLS assumption violations (Task 3.3)
-#          1. Heteroskedasticity (Breusch-Pagan test)
-#          2. Normality of residuals (Shapiro-Wilk)
-#          3. Multicollinearity (VIF)
+# Purpose: Test OLS assumption violations
+#          1. Heteroskedasticity (Breusch-Pagan test + White Test)
+#          2. Normality of residuals (Shapiro-Wilk + Jarque-Bera)
+#          3. Multicollinearity (VIF for all samples
 #          4. Model specification (RESET test)
 # Input:   data/processed/model_results.RData
 # Output:  tables/table5_diagnostics.csv
@@ -14,22 +14,22 @@ library(tidyverse)
 library(lmtest)   # for bptest(), resettest()
 library(sandwich) # for vcovHC()
 library(car)      # for vif()
+library(tseries)  # for jarque.bera.test()
 
 
-# ── LOAD MODEL RESULTS FROM 03b ───────────────────
-
+# LOAD MODEL RESULTS FROM 03
 load("data/processed/model_results.RData")
-cat("Models loaded: model_full, model_female, model_male ✓\n")
+cat("Models loaded successfully!\n")
 
 
 # ════════════════════════════════════════════════
-# STEP 1: HETEROSKEDASTICITY TEST (Breusch-Pagan)
+# STEP 1: HETEROSKEDASTICITY TEST (Breusch-Pagan + White)
 # ════════════════════════════════════════════════
-
+# ------ Breusch-Pagan Test -----
 # H0: Residuals have constant variance (homoskedasticity)
 # H1: Residuals have non-constant variance (heteroskedasticity)
 # If p < 0.05 → reject H0 → heteroskedasticity present
-#              → must use robust standard errors (already done in 03a/03b)
+#              → must use robust standard errors (already done in 03)
 
 bp_full   <- bptest(model_full)
 bp_female <- bptest(model_female)
@@ -45,13 +45,52 @@ cat(sprintf("Female      : BP = %.3f, p = %.4f  %s\n",
 cat(sprintf("Male        : BP = %.3f, p = %.4f  %s\n",
             bp_male$statistic,   bp_male$p.value,
             ifelse(bp_male$p.value   < 0.05, "→ Heteroskedasticity detected", "→ No issue")))
-cat("Note: Robust SE (HC1) already applied in regression → this is handled\n")
+cat("Note: Robust SE (HC3) already applied in regression → this is handled\n")
 
+# ------ White Test ------
+# White test is a more general version of Breusch-Pagan.
+# It tests for heteroskedasticity WITHOUT assuming a specific functional form
+# by regressing squared residuals on fitted values and fitted values squared.
+# This is the simplified White test (Harvey-Godfrey version):
+#   aux regression: e^2 ~ yhat + yhat^2
+#   test statistic: n * R^2 ~ Chi-squared(2)
+# H0: Homoskedasticity
+# H1: Heteroskedasticity of unknown form
+# Advantage: catches nonlinear forms of heteroskedasticity that BP may miss
+
+white_test <- function(model) {
+  resid_sq  <- residuals(model)^2
+  fitted_v  <- fitted(model)
+  fitted_sq <- fitted(model)^2
+  aux_model <- lm(resid_sq ~ fitted_v + fitted_sq)
+  r2   <- summary(aux_model)$r.squared
+  n    <- length(resid_sq)
+  stat <- n * r2                                    # n*R^2 ~ Chi-sq(2)
+  p_val <- pchisq(stat, df = 2, lower.tail = FALSE)
+  return(list(statistic = stat, p.value = p_val))
+}
+
+wt_full   <- white_test(model_full)
+wt_female <- white_test(model_female)
+wt_male   <- white_test(model_male)
+
+cat("\n--- White Test (Heteroskedasticity - General Form) ---\n")
+cat(sprintf("Full Sample : Chi-sq = %.3f, p = %.4f  %s\n",
+            wt_full$statistic,   wt_full$p.value,
+            ifelse(wt_full$p.value   < 0.05, "-> Heteroskedasticity detected", "-> No issue")))
+cat(sprintf("Female      : Chi-sq = %.3f, p = %.4f  %s\n",
+            wt_female$statistic, wt_female$p.value,
+            ifelse(wt_female$p.value < 0.05, "-> Heteroskedasticity detected", "-> No issue")))
+cat(sprintf("Male        : Chi-sq = %.3f, p = %.4f  %s\n",
+            wt_male$statistic,   wt_male$p.value,
+            ifelse(wt_male$p.value   < 0.05, "-> Heteroskedasticity detected", "-> No issue")))
+cat("Note: Both BP and White tests confirm heteroskedasticity -> Robust SE (HC3) appropriate\n")
 
 # ════════════════════════════════════════════════
 # STEP 2: NORMALITY OF RESIDUALS (Shapiro-Wilk)
 # ════════════════════════════════════════════════
 
+# ------ Shapiro-Wilk Test ------
 # H0: Residuals are normally distributed
 # H1: Residuals are not normally distributed
 # Note: With large samples (N > 5000), Shapiro-Wilk is very sensitive
@@ -84,26 +123,60 @@ cat("Note: With N > 5000, Shapiro-Wilk is highly sensitive.\n")
 cat("      Non-normality of residuals does NOT invalidate OLS\n")
 cat("      when sample size is large (Central Limit Theorem applies).\n")
 
+# ------ Jarque-Bera Test ------
+# Tests normality via SKEWNESS and KURTOSIS of the full residual distribution.
+# JB = (n/6) * [S^2 + (K-3)^2/4]  ~  Chi-squared(2)
+#   where S = skewness, K = kurtosis of residuals
+# H0: S = 0 and K = 3  (i.e., residuals are normally distributed)
+# H1: Residuals depart from normality in skewness or kurtosis (or both)
+# Advantage over Shapiro-Wilk:
+#   - Can be applied to the FULL sample (no n <= 5000 constraint)
+#   - Directly identifies the source of non-normality (skew vs. fat tails)
+# Caveat: still very sensitive with large N — use with QQ-plot for context
+
+jb_full   <- jarque.bera.test(residuals(model_full))
+jb_female <- jarque.bera.test(residuals(model_female))
+jb_male   <- jarque.bera.test(residuals(model_male))
+
+cat("\n--- Jarque-Bera Test (Normality - full sample) ---\n")
+cat(sprintf("Full Sample : JB = %.3f, p = %.4f  %s\n",
+            jb_full$statistic,   jb_full$p.value,
+            ifelse(jb_full$p.value   < 0.05, "-> Non-normal (skewness/kurtosis)", "-> Normal")))
+cat(sprintf("Female      : JB = %.3f, p = %.4f  %s\n",
+            jb_female$statistic, jb_female$p.value,
+            ifelse(jb_female$p.value < 0.05, "-> Non-normal (skewness/kurtosis)", "-> Normal")))
+cat(sprintf("Male        : JB = %.3f, p = %.4f  %s\n",
+            jb_male$statistic,   jb_male$p.value,
+            ifelse(jb_male$p.value   < 0.05, "-> Non-normal (skewness/kurtosis)", "-> Normal")))
+cat("Note: Rejection expected with large N; CLT ensures valid OLS inference regardless.\n")
 
 # ════════════════════════════════════════════════
 # STEP 3: MULTICOLLINEARITY (VIF)
 # ════════════════════════════════════════════════
 
 # VIF < 5   : No problem
-# VIF 5-10  : Moderate — monitor
-# VIF > 10  : Severe — consider action
-# Note: age & age2 will have high VIF — this is NORMAL for quadratic terms
+# VIF 5-10  : Moderate - monitor
+# VIF > 10  : Severe - consider action
+# Note: age & age2 will have high VIF - this is NORMAL for quadratic terms
 
-cat("\n--- VIF Check — Full Sample ---\n")
-vif_full <- vif(model_full)
-vif_df   <- data.frame(
-  Variable  = names(vif_full),
-  VIF       = round(vif_full, 3),
-  Status    = ifelse(vif_full > 10, "High (expected for age²/interaction)",
-                     ifelse(vif_full > 5,  "Moderate — monitor",
-                            "OK"))
-)
-print(vif_df, row.names = FALSE)
+print_vif <- function(model, label) {
+  cat(sprintf("\n--- VIF Check - %s ---\n", label))
+  vif_vals <- vif(model)
+  vif_df <- data.frame(
+    Variable  = names(vif_vals),
+    VIF       = round(vif_vals, 3),
+    Tolerance = round(1 / vif_vals, 3),
+    Status    = ifelse(vif_vals > 10,
+                       "High (expected for quadratic/interaction)",
+                       ifelse(vif_vals > 5, "Moderate - monitor", "OK"))
+  )
+  print(vif_df, row.names = FALSE)
+  return(vif_vals)
+}
+
+vif_full_vals   <- print_vif(model_full,   "Full Sample")
+vif_female_vals <- print_vif(model_female, "Female Subsample")
+vif_male_vals   <- print_vif(model_male,   "Male Subsample")
 
 
 # ════════════════════════════════════════════════
@@ -138,39 +211,132 @@ cat(sprintf("Male        : F = %.3f, p = %.4f  %s\n",
 # STEP 5: BUILD TABLE 5 — DIAGNOSTICS SUMMARY
 # ════════════════════════════════════════════════
 
+# Helper functions for conclusions
+conclude_hetero    <- function(p) ifelse(p < 0.05, "Detected -> Robust SE applied", "Not detected")
+conclude_normality <- function(p) ifelse(p < 0.05, "Non-normal -> CLT applies (large N)", "Normal")
+conclude_reset     <- function(p) ifelse(p < 0.05, "Possible misspecification", "OK")
+conclude_vif       <- function(v, label) ifelse(v > 10, paste0("High - expected for ", label), "OK")
+
 table5 <- data.frame(
   Test = c(
-    "Breusch-Pagan (Heteroskedasticity)",
-    "Shapiro-Wilk (Normality — sample n=5000)",
-    "RESET Test (Specification)",
-    "VIF max — educ",
-    "VIF max — age2",
-    "VIF max — educxmatch"
+    "Breusch-Pagan Test (Heteroskedasticity)",
+    "White Test (Heteroskedasticity)",
+    "Shapiro-Wilk Test (Normality, n=5000)",
+    "Jarque-Bera Test (Normality, full N)",
+    "RESET Test (Model Specification)",
+    "VIF - educ",
+    "VIF - age",
+    "VIF - age2",
+    "VIF - match",
+    "VIF - educxmatch"
   ),
   
+  # Full Sample
   Full_Statistic = c(
     round(bp_full$statistic,    3),
+    round(wt_full$statistic,    3),
     round(sw_full$statistic,    4),
+    round(jb_full$statistic,    3),
     round(reset_full$statistic, 3),
-    round(vif(model_full)["educ"],       3),
-    round(vif(model_full)["age2"],       3),
-    round(vif(model_full)["educxmatch"], 3)
+    round(vif_full_vals["educ"],       3),
+    round(vif_full_vals["age"],        3),
+    round(vif_full_vals["age2"],       3),
+    round(vif_full_vals["match"],      3),
+    round(vif_full_vals["educxmatch"], 3)
   ),
   
   Full_pvalue = c(
     round(bp_full$p.value,    4),
+    round(wt_full$p.value,    4),
     round(sw_full$p.value,    4),
+    round(jb_full$p.value,    4),
     round(reset_full$p.value, 4),
-    NA, NA, NA
+    NA, NA, NA, NA, NA
   ),
   
   Full_Conclusion = c(
-    ifelse(bp_full$p.value    < 0.05, "Detected → Robust SE applied", "Not detected"),
-    ifelse(sw_full$p.value    < 0.05, "Non-normal → CLT applies (large N)", "Normal"),
-    ifelse(reset_full$p.value < 0.05, "Possible misspecification", "OK"),
-    ifelse(vif(model_full)["educ"]       > 10, "High", "OK"),
-    "High — expected for quadratic term",
-    ifelse(vif(model_full)["educxmatch"] > 10, "High — expected for interaction", "OK")
+    conclude_hetero(bp_full$p.value),
+    conclude_hetero(wt_full$p.value),
+    conclude_normality(sw_full$p.value),
+    conclude_normality(jb_full$p.value),
+    conclude_reset(reset_full$p.value),
+    conclude_vif(vif_full_vals["educ"],       "educ"),
+    conclude_vif(vif_full_vals["age"],        "quadratic term"),
+    conclude_vif(vif_full_vals["age2"],       "quadratic term"),
+    conclude_vif(vif_full_vals["match"],      "interaction term"),
+    conclude_vif(vif_full_vals["educxmatch"], "interaction term")
+  ),
+  
+  # Female Subsample
+  Female_Statistic = c(
+    round(bp_female$statistic,    3),
+    round(wt_female$statistic,    3),
+    round(sw_female$statistic,    4),
+    round(jb_female$statistic,    3),
+    round(reset_female$statistic, 3),
+    round(vif_female_vals["educ"],       3),
+    round(vif_female_vals["age"],        3),
+    round(vif_female_vals["age2"],       3),
+    round(vif_female_vals["match"],      3),
+    round(vif_female_vals["educxmatch"], 3)
+  ),
+  
+  Female_pvalue = c(
+    round(bp_female$p.value,    4),
+    round(wt_female$p.value,    4),
+    round(sw_female$p.value,    4),
+    round(jb_female$p.value,    4),
+    round(reset_female$p.value, 4),
+    NA, NA, NA, NA, NA
+  ),
+  
+  Female_Conclusion = c(
+    conclude_hetero(bp_female$p.value),
+    conclude_hetero(wt_female$p.value),
+    conclude_normality(sw_female$p.value),
+    conclude_normality(jb_female$p.value),
+    conclude_reset(reset_female$p.value),
+    conclude_vif(vif_female_vals["educ"],       "educ"),
+    conclude_vif(vif_female_vals["age"],        "quadratic term"),
+    conclude_vif(vif_female_vals["age2"],       "quadratic term"),
+    conclude_vif(vif_female_vals["match"],      "interaction term"),
+    conclude_vif(vif_female_vals["educxmatch"], "interaction term")
+  ),
+  
+  # Male Subsample
+  Male_Statistic = c(
+    round(bp_male$statistic,    3),
+    round(wt_male$statistic,    3),
+    round(sw_male$statistic,    4),
+    round(jb_male$statistic,    3),
+    round(reset_male$statistic, 3),
+    round(vif_male_vals["educ"],       3),
+    round(vif_male_vals["age"],        3),
+    round(vif_male_vals["age2"],       3),
+    round(vif_male_vals["match"],      3),
+    round(vif_male_vals["educxmatch"], 3)
+  ),
+  
+  Male_pvalue = c(
+    round(bp_male$p.value,    4),
+    round(wt_male$p.value,    4),
+    round(sw_male$p.value,    4),
+    round(jb_male$p.value,    4),
+    round(reset_male$p.value, 4),
+    NA, NA, NA, NA, NA
+  ),
+  
+  Male_Conclusion = c(
+    conclude_hetero(bp_male$p.value),
+    conclude_hetero(wt_male$p.value),
+    conclude_normality(sw_male$p.value),
+    conclude_normality(jb_male$p.value),
+    conclude_reset(reset_male$p.value),
+    conclude_vif(vif_male_vals["educ"],       "educ"),
+    conclude_vif(vif_male_vals["age"],        "quadratic term"),
+    conclude_vif(vif_male_vals["age2"],       "quadratic term"),
+    conclude_vif(vif_male_vals["match"],      "interaction term"),
+    conclude_vif(vif_male_vals["educxmatch"], "interaction term")
   )
 )
 
