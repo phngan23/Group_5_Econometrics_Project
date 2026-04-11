@@ -1,0 +1,7 @@
+"Test","Full_Statistic","Full_pvalue","Full_Conclusion"
+"Breusch-Pagan (Heteroskedasticity)",456.174,0,"Detected → Robust SE applied"
+"Shapiro-Wilk (Normality — sample n=5000)",0.9076,0,"Non-normal → CLT applies (large N)"
+"RESET Test (Specification)",174.372,0,"Possible misspecification"
+"VIF max — educ",2.807,,"OK"
+"VIF max — age2",31.401,,"High — expected for quadratic term"
+"VIF max — educxmatch",17.387,,"High — expected for interaction"

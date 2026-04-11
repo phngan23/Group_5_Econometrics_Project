@@ -4,6 +4,7 @@
 # Input: data/processed/data_model.RData
 # Output: figures/histogram_wage.png
 #         figures/qqplot_lnwage.png
+#         figures/boxplot_lnwage.png
 #========================================
 
 # LOAD PACKAGES
@@ -57,7 +58,7 @@ histogram_plot <- ggplot(data_model, aes(x = ln_wage)) +
   # Add titles and axis labels
   labs(
     title    = "Distribution of Log Monthly Wage",
-    subtitle = "Manufacturing sector, Red River Delta — LFS 2018",
+    subtitle = "Manufacturing sector, Red River Delta - LFS 2018",
     x        = "ln(Monthly Wage)",
     y        = "Frequency"
   ) +

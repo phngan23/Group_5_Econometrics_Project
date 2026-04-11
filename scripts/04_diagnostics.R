@@ -1,295 +1,248 @@
-#========================================
+# ================================================
 # 04_diagnostics.R
-# Purpose: OLS Assumption Diagnostic Tests
-#   1. Heteroskedasticity (Breusch-Pagan + White)
-#   2. Normality of residuals (Shapiro-Wilk + Jarque-Bera)
-#   3. Multicollinearity (VIF) — with mean-centering fix
-#   4. Model misspecification (Ramsey RESET)
-#   5. Robust Standard Errors (HC3) — fix for heteroskedasticity
-# Output: Table 5 — Diagnostic Tests Summary (.csv)
-#========================================
-
-# Install if needed:
-install.packages(c("car", "lmtest", "tseries", "sandwich"))
-install.packages("sandwich")
+# Purpose: Test OLS assumption violations (Task 3.3)
+#          1. Heteroskedasticity (Breusch-Pagan test)
+#          2. Normality of residuals (Shapiro-Wilk)
+#          3. Multicollinearity (VIF)
+#          4. Model specification (RESET test)
+# Input:   data/processed/model_results.RData
+# Output:  tables/table5_diagnostics.csv
+#          figures/residual_plots.png
+# ================================================
 
 library(tidyverse)
-library(car)      
-library(lmtest)    
-library(tseries)   
-library(sandwich)   
+library(lmtest)   # for bptest(), resettest()
+library(sandwich) # for vcovHC()
+library(car)      # for vif()
 
 
-#----------------------------------------
-# Load data
-#----------------------------------------
-base_path <- "C:/Users/HP/Downloads/Group_5_Econometrics_Project"
-#Tùy máy nha cân nhắc xóa dòng này nha
+# ── LOAD MODEL RESULTS FROM 03b ───────────────────
 
-load(file.path(base_path, "data/processed/data_model.RData"))
-load(file.path(base_path, "data/processed/sub1_female.RData"))
-load(file.path(base_path, "data/processed/sub2_male.RData"))
+load("data/processed/model_results.RData")
+cat("Models loaded: model_full, model_female, model_male ✓\n")
 
 
-#========================================
-# STEP 0: Mean-center educ and match
-# to reduce multicollinearity in interaction term
-#========================================
+# ════════════════════════════════════════════════
+# STEP 1: HETEROSKEDASTICITY TEST (Breusch-Pagan)
+# ════════════════════════════════════════════════
 
-#Tạo các biến mới do cor cao nên các biến tương tác cần dùng Mean-center trước khi tạo biến tương tác
-center_vars <- function(df) {
-  df %>%
-    mutate(
-      educ_c     = educ  - mean(educ,  na.rm = TRUE),
-      match_c    = match - mean(match, na.rm = TRUE),
-      educxmatch = educ_c * match_c
-    )
-}
+# H0: Residuals have constant variance (homoskedasticity)
+# H1: Residuals have non-constant variance (heteroskedasticity)
+# If p < 0.05 → reject H0 → heteroskedasticity present
+#              → must use robust standard errors (already done in 03a/03b)
 
-data_model  <- center_vars(data_model)
-sub1_female <- center_vars(sub1_female)
-sub2_male   <- center_vars(sub2_male)
+bp_full   <- bptest(model_full)
+bp_female <- bptest(model_female)
+bp_male   <- bptest(model_male)
 
-cat("✓ Mean-centering applied to educ and match\n")
-cat(sprintf("  educ  mean: %.3f\n", mean(data_model$educ,  na.rm = TRUE)))
-cat(sprintf("  match mean: %.3f\n", mean(data_model$match, na.rm = TRUE)))
-
-
-#----------------------------------------
-# Model formula (using centered vars)
-#----------------------------------------
-formula_full <- ln_wage ~ educ_c + age + age2 + hours +
-  male + cert + contract + state + fdi +
-  match_c + educxmatch + bhxh
-
-formula_sub <- ln_wage ~ educ_c + age + age2 + hours +
-  cert + contract + state + fdi +
-  match_c + educxmatch + bhxh
+cat("\n--- Breusch-Pagan Test (Heteroskedasticity) ---\n")
+cat(sprintf("Full Sample : BP = %.3f, p = %.4f  %s\n",
+            bp_full$statistic,   bp_full$p.value,
+            ifelse(bp_full$p.value   < 0.05, "→ Heteroskedasticity detected", "→ No issue")))
+cat(sprintf("Female      : BP = %.3f, p = %.4f  %s\n",
+            bp_female$statistic, bp_female$p.value,
+            ifelse(bp_female$p.value < 0.05, "→ Heteroskedasticity detected", "→ No issue")))
+cat(sprintf("Male        : BP = %.3f, p = %.4f  %s\n",
+            bp_male$statistic,   bp_male$p.value,
+            ifelse(bp_male$p.value   < 0.05, "→ Heteroskedasticity detected", "→ No issue")))
+cat("Note: Robust SE (HC1) already applied in regression → this is handled\n")
 
 
-#----------------------------------------
-# Fit models
-#----------------------------------------
-model_full   <- lm(formula_full, data = data_model  %>% na.omit())
-model_female <- lm(formula_sub,  data = sub1_female %>% na.omit())
-model_male   <- lm(formula_sub,  data = sub2_male   %>% na.omit())
+# ════════════════════════════════════════════════
+# STEP 2: NORMALITY OF RESIDUALS (Shapiro-Wilk)
+# ════════════════════════════════════════════════
 
-cat("\n Models fitted successfully\n")
-cat(sprintf("  Full sample n   = %d\n", nobs(model_full)))
-cat(sprintf("  Female sample n = %d\n", nobs(model_female)))
-cat(sprintf("  Male sample n   = %d\n", nobs(model_male)))
+# H0: Residuals are normally distributed
+# H1: Residuals are not normally distributed
+# Note: With large samples (N > 5000), Shapiro-Wilk is very sensitive
+#       Even tiny deviations from normality will show p < 0.05
+#       → Look at the histogram and QQ-plot instead for large samples
+
+# Shapiro-Wilk requires sample size <= 5000
+# So we test on a random sample of 5000 residuals
+set.seed(42)  # for reproducibility
+
+resid_full_sample   <- sample(residuals(model_full),   5000)
+resid_female_sample <- sample(residuals(model_female), 5000)
+resid_male_sample   <- sample(residuals(model_male),   5000)
+
+sw_full   <- shapiro.test(resid_full_sample)
+sw_female <- shapiro.test(resid_female_sample)
+sw_male   <- shapiro.test(resid_male_sample)
+
+cat("\n--- Shapiro-Wilk Test (Normality of Residuals) ---\n")
+cat(sprintf("Full Sample : W = %.4f, p = %.4f  %s\n",
+            sw_full$statistic,   sw_full$p.value,
+            ifelse(sw_full$p.value   < 0.05, "→ Non-normal", "→ Normal")))
+cat(sprintf("Female      : W = %.4f, p = %.4f  %s\n",
+            sw_female$statistic, sw_female$p.value,
+            ifelse(sw_female$p.value < 0.05, "→ Non-normal", "→ Normal")))
+cat(sprintf("Male        : W = %.4f, p = %.4f  %s\n",
+            sw_male$statistic,   sw_male$p.value,
+            ifelse(sw_male$p.value   < 0.05, "→ Non-normal", "→ Normal")))
+cat("Note: With N > 5000, Shapiro-Wilk is highly sensitive.\n")
+cat("      Non-normality of residuals does NOT invalidate OLS\n")
+cat("      when sample size is large (Central Limit Theorem applies).\n")
 
 
-#========================================
-# FUNCTION: Run all diagnostics
-#========================================
-run_diagnostics <- function(model, label) {
+# ════════════════════════════════════════════════
+# STEP 3: MULTICOLLINEARITY (VIF)
+# ════════════════════════════════════════════════
+
+# VIF < 5   : No problem
+# VIF 5-10  : Moderate — monitor
+# VIF > 10  : Severe — consider action
+# Note: age & age2 will have high VIF — this is NORMAL for quadratic terms
+
+cat("\n--- VIF Check — Full Sample ---\n")
+vif_full <- vif(model_full)
+vif_df   <- data.frame(
+  Variable  = names(vif_full),
+  VIF       = round(vif_full, 3),
+  Status    = ifelse(vif_full > 10, "High (expected for age²/interaction)",
+                     ifelse(vif_full > 5,  "Moderate — monitor",
+                            "OK"))
+)
+print(vif_df, row.names = FALSE)
+
+
+# ════════════════════════════════════════════════
+# STEP 4: MODEL SPECIFICATION (RESET Test)
+# ════════════════════════════════════════════════
+
+# RESET test checks if the functional form is correct
+# H0: Model is correctly specified (no omitted nonlinear terms)
+# H1: Model has functional form misspecification
+# If p < 0.05 → may need to add squared terms or transform variables
+
+reset_full   <- resettest(model_full,   power = 2:3, type = "fitted")
+reset_female <- resettest(model_female, power = 2:3, type = "fitted")
+reset_male   <- resettest(model_male,   power = 2:3, type = "fitted")
+
+cat("\n--- RESET Test (Model Specification) ---\n")
+cat(sprintf("Full Sample : F = %.3f, p = %.4f  %s\n",
+            reset_full$statistic,   reset_full$p.value,
+            ifelse(reset_full$p.value   < 0.05,
+                   "→ Possible misspecification", "→ OK")))
+cat(sprintf("Female      : F = %.3f, p = %.4f  %s\n",
+            reset_female$statistic, reset_female$p.value,
+            ifelse(reset_female$p.value < 0.05,
+                   "→ Possible misspecification", "→ OK")))
+cat(sprintf("Male        : F = %.3f, p = %.4f  %s\n",
+            reset_male$statistic,   reset_male$p.value,
+            ifelse(reset_male$p.value   < 0.05,
+                   "→ Possible misspecification", "→ OK")))
+
+
+# ════════════════════════════════════════════════
+# STEP 5: BUILD TABLE 5 — DIAGNOSTICS SUMMARY
+# ════════════════════════════════════════════════
+
+table5 <- data.frame(
+  Test = c(
+    "Breusch-Pagan (Heteroskedasticity)",
+    "Shapiro-Wilk (Normality — sample n=5000)",
+    "RESET Test (Specification)",
+    "VIF max — educ",
+    "VIF max — age2",
+    "VIF max — educxmatch"
+  ),
   
-  cat("\n", strrep("=", 55), "\n")
-  cat("DIAGNOSTIC TESTS —", label, "\n")
-  cat(strrep("=", 55), "\n")
+  Full_Statistic = c(
+    round(bp_full$statistic,    3),
+    round(sw_full$statistic,    4),
+    round(reset_full$statistic, 3),
+    round(vif(model_full)["educ"],       3),
+    round(vif(model_full)["age2"],       3),
+    round(vif(model_full)["educxmatch"], 3)
+  ),
   
-  results <- list()
+  Full_pvalue = c(
+    round(bp_full$p.value,    4),
+    round(sw_full$p.value,    4),
+    round(reset_full$p.value, 4),
+    NA, NA, NA
+  ),
   
-  # ---- 1. HETEROSKEDASTICITY ----
-  cat("\n--- 1. Heteroskedasticity ---\n")
-  
-  bp <- bptest(model)
-  cat(sprintf("Breusch-Pagan: BP = %.4f, p = %.4f  %s\n",
-              bp$statistic, bp$p.value,
-              ifelse(bp$p.value < 0.05, "Reject H0", "Fail to reject H0")))
-  
-  results[["Breusch-Pagan"]] <- data.frame(
-    Sample     = label,
-    Test       = "Breusch-Pagan Test",
-    Statistic  = round(as.numeric(bp$statistic), 4),
-    P_value    = round(bp$p.value, 4),
-    Conclusion = ifelse(bp$p.value < 0.05,
-                        "Reject H0 - Heteroskedasticity present",
-                        "Fail to reject H0 - Homoskedasticity"),
-    stringsAsFactors = FALSE
+  Full_Conclusion = c(
+    ifelse(bp_full$p.value    < 0.05, "Detected → Robust SE applied", "Not detected"),
+    ifelse(sw_full$p.value    < 0.05, "Non-normal → CLT applies (large N)", "Normal"),
+    ifelse(reset_full$p.value < 0.05, "Possible misspecification", "OK"),
+    ifelse(vif(model_full)["educ"]       > 10, "High", "OK"),
+    "High — expected for quadratic term",
+    ifelse(vif(model_full)["educxmatch"] > 10, "High — expected for interaction", "OK")
   )
-  
-  white <- bptest(model, ~ fitted(model) + I(fitted(model)^2))
-  cat(sprintf("White Test:    W  = %.4f, p = %.4f  %s\n",
-              white$statistic, white$p.value,
-              ifelse(white$p.value < 0.05, "Reject H0", "Fail to reject H0")))
-  
-  results[["White"]] <- data.frame(
-    Sample     = label,
-    Test       = "White Test",
-    Statistic  = round(as.numeric(white$statistic), 4),
-    P_value    = round(white$p.value, 4),
-    Conclusion = ifelse(white$p.value < 0.05,
-                        "Reject H0 - Heteroskedasticity present",
-                        "Fail to reject H0 - Homoskedasticity"),
-    stringsAsFactors = FALSE
-  )
-  
-  # ---- 2. NORMALITY OF RESIDUALS ----
-  # cân nhắc có thể bỏ kiểm định phần dư vì mẫu đang quá lớn nên nhìn sơ đồ nó gần chuẩn là ok rùi
-  cat("\n--- 2. Normality of Residuals ---\n")
-  
-  resid_vals <- residuals(model)
-  n          <- length(resid_vals)
-  
-  jb <- jarque.bera.test(resid_vals)
-  cat(sprintf("Jarque-Bera:   JB = %.4f, p = %.4f  %s\n",
-              jb$statistic, jb$p.value,
-              ifelse(jb$p.value < 0.05, "Reject H0", "Fail to reject H0")))
-  
-  results[["Jarque-Bera"]] <- data.frame(
-    Sample     = label,
-    Test       = "Jarque-Bera Test",
-    Statistic  = round(as.numeric(jb$statistic), 4),
-    P_value    = round(jb$p.value, 4),
-    Conclusion = ifelse(jb$p.value < 0.05,
-                        "Reject H0 - Residuals not normal",
-                        "Fail to reject H0 - Residuals normal"),
-    stringsAsFactors = FALSE
-  )
-  
-  if (n <= 5000) {
-    sw <- shapiro.test(resid_vals)
-  } else {
-    set.seed(42)
-    sw <- shapiro.test(sample(resid_vals, 5000))
-  }
-  sw_label <- ifelse(n > 5000,
-                     "Shapiro-Wilk Test (n=5000 sample)",
-                     "Shapiro-Wilk Test")
-  cat(sprintf("Shapiro-Wilk:  W  = %.4f, p = %.4f  %s%s\n",
-              sw$statistic, sw$p.value,
-              ifelse(sw$p.value < 0.05, "Reject H0", "Fail to reject H0"),
-              ifelse(n > 5000, " [sampled]", "")))
-  
-  results[["Shapiro-Wilk"]] <- data.frame(
-    Sample     = label,
-    Test       = sw_label,
-    Statistic  = round(as.numeric(sw$statistic), 4),
-    P_value    = round(sw$p.value, 4),
-    Conclusion = ifelse(sw$p.value < 0.05,
-                        "Reject H0 - Residuals not normal",
-                        "Fail to reject H0 - Residuals normal"),
-    stringsAsFactors = FALSE
-  )
-  
-  # ---- 3. MULTICOLLINEARITY ----
-  cat("\n--- 3. Multicollinearity (VIF) ---\n")
-  
-  vif_vals    <- vif(model)
-  max_vif     <- max(vif_vals)
-  mean_vif    <- mean(vif_vals)
-  vif_no_quad <- vif_vals[!names(vif_vals) %in% c("age", "age2")]
-  max_vif_adj <- max(vif_no_quad)
-  
-  cat(sprintf("Max VIF (all):            %.3f\n", max_vif))
-  cat(sprintf("Max VIF (excl. age/age2): %.3f\n", max_vif_adj))
-  cat(sprintf("Mean VIF:                 %.3f\n", mean_vif))
-  print(round(vif_vals, 3))
-  
-  results[["VIF"]] <- data.frame(
-    Sample     = label,
-    Test       = "Multicollinearity - Max VIF (excl. age/age2)",
-    Statistic  = round(max_vif_adj, 4),
-    P_value    = NA,
-    Conclusion = ifelse(max_vif_adj > 10,
-                        "Severe multicollinearity detected",
-                        ifelse(max_vif_adj > 5,
-                               "Moderate multicollinearity - monitor",
-                               "No multicollinearity problem (VIF < 5)")),
-    stringsAsFactors = FALSE
-  )
-  
-  # ---- 4. RAMSEY RESET TEST ----
-  cat("\n--- 4. Ramsey RESET Test ---\n")
-  
-  reset <- resettest(model, power = 2:3, type = "fitted")
-  cat(sprintf("RESET Test:    F = %.4f, p = %.4f  %s\n",
-              reset$statistic, reset$p.value,
-              ifelse(reset$p.value < 0.05, "Reject H0", "Fail to reject H0")))
-  
-  results[["RESET"]] <- data.frame(
-    Sample     = label,
-    Test       = "Ramsey RESET Test",
-    Statistic  = round(as.numeric(reset$statistic), 4),
-    P_value    = round(reset$p.value, 4),
-    Conclusion = ifelse(reset$p.value < 0.05,
-                        "Reject H0 - Model misspecification detected",
-                        "Fail to reject H0 - No misspecification"),
-    stringsAsFactors = FALSE
-  )
-  
-  table_out <- bind_rows(results)
-  return(table_out)
-}
+)
+
+cat("\n--- TABLE 5: Diagnostic Tests Summary ---\n")
+print(table5, row.names = FALSE)
 
 
-#========================================
-# RUN DIAGNOSTICS FOR ALL SAMPLES
-#========================================
+# ════════════════════════════════════════════════
+# STEP 6: RESIDUAL PLOTS (Full Sample)
+# ════════════════════════════════════════════════
 
-table_full   <- run_diagnostics(model_full,   "Full Sample")
-table_female <- run_diagnostics(model_female, "Subsample 1: Female")
-table_male   <- run_diagnostics(model_male,   "Subsample 2: Male")
+# Save 4 standard diagnostic plots to one PNG file
+png("figures/residual_plots.png",
+    width = 3200, height = 2400, res = 300)
+
+# Set layout to 2x2 grid
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+
+# Plot 1: Residuals vs Fitted
+#         — checks linearity and homoskedasticity
+#         — want: random scatter around horizontal line at 0
+# plot(model_full, which = 1, main = "Residuals vs Fitted", col  = "steelblue", pch = 16, cex = 0.3)
+plot(model_full, which = 1,
+     id.n = 0,                      
+     caption = "", sub.caption = "",
+     col  = "steelblue", pch = 16, cex = 0.3)
+title("Residuals vs Fitted", line = 1)
+
+# Plot 2: Normal Q-Q plot of residuals
+#         — checks normality of residuals
+#         — want: points close to diagonal line
+# plot(model_full, which = 2, main = "Normal Q-Q Plot", col  = "steelblue", pch = 16, cex = 0.3)
+plot(model_full, which = 2,
+     id.n = 0,
+     caption = "", sub.caption = "",
+     col  = "steelblue", pch = 16, cex = 0.3)
+title("Normal Q-Q Plot", line = 1)
+
+# Plot 3: Scale-Location plot
+#         — another check for heteroskedasticity
+#         — want: horizontal red line with random scatter
+# plot(model_full, which = 3,main = "Scale-Location",col  = "steelblue", pch = 16, cex = 0.3)
+plot(model_full, which = 3,
+     id.n = 0,
+     caption = "", sub.caption = "",
+     col  = "steelblue", pch = 16, cex = 0.3)
+title("Scale-Location", line = 1)
+#title(ylab = expression(sqrt("|Standardized residuals|")))
+
+# Plot 4: Residuals vs Leverage
+#         — identifies influential observations (Cook's distance)
+#         — want: no points beyond Cook's distance lines
+# plot(model_full, which = 5,main = "Residuals vs Leverage", col  = "steelblue", pch = 16, cex = 0.3)
+plot(model_full, which = 5,
+     id.n = 3,
+     caption = "", sub.caption = "",
+     col  = "steelblue", pch = 16, cex = 0.3)
+title("Residuals vs Leverage", line = 1)
+
+dev.off()  # close PNG — MUST include this line
+cat("\n✓ Saved: figures/residual_plots.png\n")
 
 
-#========================================
-# TABLE 5 — COMBINED SUMMARY
-#========================================
+# ════════════════════════════════════════════════
+# STEP 7: SAVE TABLE 5
+# ════════════════════════════════════════════════
 
-table5_all <- bind_rows(table_full, table_female, table_male)
+write.csv(table5,
+          "tables/table5_diagnostics.csv",
+          row.names = FALSE,
+          na = "")
+cat("✓ Saved: tables/table5_diagnostics.csv\n")
 
-cat("\n", strrep("=", 60), "\n")
-cat("TABLE 5: DIAGNOSTIC TESTS SUMMARY\n")
-cat(strrep("=", 60), "\n")
-print(table5_all, row.names = FALSE)
-
-
-#========================================
-# EXPORT TABLE 5 TO CSV
-#========================================
-
-out_path <- file.path(base_path, "data/processed/table5_diagnostics.csv")
-write.csv(table5_all, out_path, row.names = FALSE)
-cat("\n✓ Table 5 saved to:", out_path, "\n")
-
-
-#========================================
-# STEP 5: Robust Standard Errors (HC3)
-# Dùng khi có heteroskedasticity
-#========================================
-
-cat("\n", strrep("=", 55), "\n")
-cat("ROBUST STANDARD ERRORS (HC3) — Full Sample\n")
-cat(strrep("=", 55), "\n")
-print(coeftest(model_full, vcov = vcovHC(model_full, type = "HC3")))
-
-cat("\n", strrep("=", 55), "\n")
-cat("ROBUST STANDARD ERRORS (HC3) — Female\n")
-cat(strrep("=", 55), "\n")
-print(coeftest(model_female, vcov = vcovHC(model_female, type = "HC3")))
-
-cat("\n", strrep("=", 55), "\n")
-cat("ROBUST STANDARD ERRORS (HC3) — Male\n")
-cat(strrep("=", 55), "\n")
-print(coeftest(model_male, vcov = vcovHC(model_male, type = "HC3")))
-
-
-#========================================
-# STEP 6: Residual Plots
-#========================================
-
-par(mfrow = c(2, 3))
-plot(model_full,   which = 1, main = "Full: Residuals vs Fitted")
-plot(model_full,   which = 2, main = "Full: Normal Q-Q")
-hist(residuals(model_full), breaks = 50, col = "steelblue",
-     main = "Full: Residual Histogram", xlab = "Residuals")
-plot(model_female, which = 2, main = "Female: Normal Q-Q")
-plot(model_male,   which = 2, main = "Male: Normal Q-Q")
-par(mfrow = c(1, 1))
-
-cat("\n✓ Done! All diagnostics completed.\n")
-cat("\nNOTE: Large samples (n > 1000) often reject normality\n")
-cat("and heteroskedasticity tests even with minor violations.\n")
-cat("Use Robust SE (HC3) results above for final inference.\n")
+cat("\n✓ 04_diagnostics.R complete\n")
+cat("  All diagnostic results saved.\n")
