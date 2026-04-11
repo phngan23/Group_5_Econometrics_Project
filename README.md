@@ -19,22 +19,36 @@ Group_5_Econometrics_Project/
 │       ├── data_model.RData       # Full sample
 │       ├── sub1_female.RData      # Subsample 1: Female workers
 │       ├── sub2_male.RData        # Subsample 2: Male workers
-│       └── data_final.RData       # Output of 02_eda
+│       └── model_full.RData
+│       └── model_results.RData
 │
 ├── scripts/
 │   ├── 01_variable_coding.R       # Read data, create & encode all variables
-│   ├── 02_descriptive_stats.R     # Table 1 & 2: descriptive statistics
-│   ├── 03_distribution.R          # Histogram, QQ-plot, outlier detection
-│   └── 04_correlation_vif.R       # Correlation matric, VIF check
+│   ├── 02a_descriptive_stats.R    # Table 1 & 2: descriptive statistics
+│   ├── 02b_distribution.R         # Histogram, QQ-plot, outlier detection
+│   └── 02c_correlation_vif.R      # Correlation matric, VIF check
+│   └── 03a_models.R               # OLS regression on full sample
+│   └── 03b_models.R               # OLS regression on 2 subsamples. Compare Full vs Female vs Male
+│   └── 04_diagnostics.R           # Test OLS assumption violations (4 test)
 │
 ├── figures/                       # All plots saved here (.png)
-│   ├── histogram_wage.png
-│   ├── correlation_matrix.png
+│   ├── histogram_lnwage.png
+│   ├── qqplot_lnwage.png
+│   ├── boxplot_lnwage.png
+│   ├── correlation_heatmap.png
 │   └── residual_plots.png
 │
 ├── tables/                        # All tables saved here (.csv)
-│   ├── descriptive_stats.docx
-│   └── regression_results.docx
+│   ├── table1a_continuous.csv
+│   └── table1b_dummy.csv
+│   ├── table2a_by_gender_continuous.csv
+│   └── table2b_by_gender_dummy.csv
+│   └── vif_full_sample.csv
+│   └── vif_female.csv
+│   └── vif_male.csv
+│   └── table3_full_sample.csv
+│   └── table4_three_models.csv
+│   └── table5_diagnostics.csv
 │
 ├── Report.Rmd
 │
